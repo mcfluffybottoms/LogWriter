@@ -7,6 +7,9 @@
 
 namespace testSpace {
 
+/*
+    Helps to ignore times used.
+*/
 bool linesEqual(std::string& l1, std::string& l2) {
     auto l1_start = l1.find("]");
     auto l2_start = l2.find("]");
@@ -21,29 +24,33 @@ bool linesEqual(std::string& l1, std::string& l2) {
     return l1 == l2;
 }
 
-bool comparefiles(const std::string& p1, const std::string& p2) {
-    std::ifstream f1(p1, std::ifstream::binary);
+/*
+    Function to compare actual data with expected data.
+*/
+bool comparefiles(std::vector<std::string>& f1, const std::string& p2) {
     std::ifstream f2(p2, std::ifstream::binary);
 
-    if (f1.fail() || f2.fail()) {
+    if (f1.empty() || f2.fail()) {
         std::cout << "f1.fail() || f2.fail()\n";
         return false;
     }
 
-    std::string f1_line;
     std::string f2_line;
     size_t line_number = 0;
-    while (std::getline(f1, f1_line)) {
+    while (std::getline(f2, f2_line)) {
         ++line_number;
-        if (!std::getline(f2, f2_line) || !linesEqual(f1_line, f2_line)) {
+        if (f1.size() < line_number || !linesEqual(f2_line, f1[line_number - 1])) {
             std::cerr << "      Wrong line " << line_number << "\n";
-            std::cerr << "      1st file: " << f1_line << "\n";
+            std::cerr << "      1st file: " << f1[line_number - 1] << "\n";
             std::cerr << "      2st file: " << f2_line << "\n";
             return false;
         }
     }
-    if(std::getline(f2, f2_line)) {
-        std::cout << f2_line << "\n";
+    ++line_number;
+    if(f1.size() > line_number) {
+        std::cerr << "      Wrong line " << line_number << "\n";
+        std::cerr << "      1st file: " << f1[line_number - 1] << "\n";
+        std::cerr << "      2st file: " << "" << "\n";
         return false;
     }
     return true;
@@ -53,24 +60,34 @@ bool comparefiles(const std::string& p1, const std::string& p2) {
 
 using namespace testSpace;
 
-int main() {
+void test_log() {
     auto& runner = TestRunner::getInstance();
+    std::vector<std::string> expected;
 
+    expected = {
+        "[DEBUG][...] LOGGER MESSAGE 1",
+        "",
+    };
     runner.runTest("Simple log message",
-        [&runner](){
+        [&runner, &expected](){
             if(std::filesystem::exists("TEMPlogWriterTest-1")) {
                 std::remove("TEMPlogWriterTest-1");
             }
             logWriter::logger logger("TEMPlogWriterTest-1", level::logLevel::DEBUG);
             logger.log("LOGGER MESSAGE 1");
-            runner.assertTrue(comparefiles(RESOURCES_DIR "\\libExpectedLogs\\1", "TEMPlogWriterTest-1"));
+            runner.assertTrue(comparefiles(expected, "TEMPlogWriterTest-1"));
             logger.finish();
             std::remove("TEMPlogWriterTest-1");
         }
     );
-
+    expected = {
+        "[DEBUG][...] LOGGER MESSAGE 1",
+        "[INFO][...] LOGGER MESSAGE 2",
+        "[CRITICAL][...] LOGGER MESSAGE 3",
+        "",
+    };
     runner.runTest("Several Inputs",
-        [&runner](){
+        [&runner, &expected](){
             if(std::filesystem::exists("TEMPlogWriterTest-2")) {
                 std::remove("TEMPlogWriterTest-2");
             }
@@ -78,14 +95,18 @@ int main() {
             logger.log("LOGGER MESSAGE 1");
             logger.log("LOGGER MESSAGE 2", level::logLevel::INFO);
             logger.log("LOGGER MESSAGE 3", level::logLevel::CRITICAL);
-            runner.assertTrue(comparefiles(RESOURCES_DIR "\\libExpectedLogs\\2", "TEMPlogWriterTest-2"));
+            runner.assertTrue(comparefiles(expected, "TEMPlogWriterTest-2"));
             logger.finish();
             std::remove("TEMPlogWriterTest-2");
         }
     );
-
+    expected = {
+        "[CRITICAL][...] LOGGER MESSAGE 3",
+        "[CRITICAL][...] LOGGER MESSAGE 4",
+        "",
+    };
     runner.runTest("Filters Out Logging Levels",
-        [&runner](){
+        [&runner, &expected](){
             if(std::filesystem::exists("TEMPlogWriterTest-3")) {
                 std::remove("TEMPlogWriterTest-3");
             }
@@ -94,14 +115,22 @@ int main() {
             logger.log("LOGGER MESSAGE 2", level::logLevel::INFO);
             logger.log("LOGGER MESSAGE 3", level::logLevel::CRITICAL);
             logger.log("LOGGER MESSAGE 4");
-            runner.assertTrue(comparefiles(RESOURCES_DIR "\\libExpectedLogs\\3", "TEMPlogWriterTest-3"));
+            runner.assertTrue(comparefiles(expected, "TEMPlogWriterTest-3"));
             logger.finish();
             std::remove("TEMPlogWriterTest-3");
         }
     );
-
+    expected = {
+        "[INFO][...] LOGGER MESSAGE 2",
+        "[CRITICAL][...] LOGGER MESSAGE 3",
+        "[CRITICAL][...] LOGGER MESSAGE 3",
+        "[DEBUG][...] LOGGER MESSAGE 1",
+        "[INFO][...] LOGGER MESSAGE 2",
+        "[CRITICAL][...] LOGGER MESSAGE 3",
+        "",
+    };
     runner.runTest("Simple Change Default Logging Levels",
-        [&runner](){
+        [&runner, &expected](){
             if(std::filesystem::exists("TEMPlogWriterTest-4")) {
                 std::remove("TEMPlogWriterTest-4");
             }
@@ -123,11 +152,13 @@ int main() {
             logger.log("LOGGER MESSAGE 2", level::logLevel::INFO);
             logger.log("LOGGER MESSAGE 3", level::logLevel::CRITICAL);
             // CHECK RESULT
-            runner.assertTrue(comparefiles(RESOURCES_DIR "\\libExpectedLogs\\4", "TEMPlogWriterTest-4"));
+            runner.assertTrue(comparefiles(expected, "TEMPlogWriterTest-4"));
             logger.finish();
             std::remove("TEMPlogWriterTest-4");
         }
     );
 }
 
-
+int main() {
+    test_log();
+}
