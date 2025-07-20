@@ -48,6 +48,6 @@ if(INCLUDE_TESTS)
     target_link_libraries(runTests PRIVATE logWriter testFramework)
 endif()
 
-message(STATUS "logWriter build type: ${BUILD_SHARED_LIBS}")
+message(STATUS "logWriter is shared: ${BUILD_SHARED_LIBS}")
 message(STATUS "example is built: ${INCLUDE_EXAMPLE}")
 message(STATUS "test is built: ${INCLUDE_TESTS}")
