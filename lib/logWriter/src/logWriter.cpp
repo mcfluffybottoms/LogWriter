@@ -53,6 +53,9 @@ LOGWRITER_API std::string get_time_for_file() {
 
 namespace logWriter {
 
+
+// FILE LOGGER
+
 logger::logger(const std::string& jn, level::logLevel ll)
     : defaultLogLevel(ll) {
     journal.open(jn, std::ios_base::app);
@@ -61,27 +64,115 @@ logger::logger(const std::string& jn, level::logLevel ll)
     }
 }
 
+void logger::log(const std::string& msg, level::logLevel lvl) {
+    auto time = details::get_time();
+    std::string entry = "[" + loglevel_to_str(lvl) + "][" + time + "] " + msg;
+    if (lvl < defaultLogLevel) return;
+    {
+        std::unique_lock<std::mutex> lock(m_);
+        journal << entry << std::endl;
+    }
+}
+
+void logger::log(const std::string& msg) {
+    log(msg, defaultLogLevel);
+}
+
+logger::~logger() { 
+    std::string entry = "Finishing logging...";
+    {
+        std::unique_lock<std::mutex> lock(m_);
+        journal << entry << std::flush;
+    }
+}
+
 void logger::setDefaultLogLevel(level::logLevel lvl) { defaultLogLevel.store(lvl); }
 
-level::logLevel logger::getDefaultLogLevel() { return defaultLogLevel; }
+level::logLevel logger::getDefaultLogLevel() const { return defaultLogLevel; }
 
-void logger::finish() { journal.close();}
+void logger::finish() {
+    std::string entry = "Finishing logging...";
+    {
+        std::unique_lock<std::mutex> lock(m_);
+        journal << entry << std::endl;
+        journal.close();
+    }
+}
 
-template void logger::log<char const*>(char const* msg);
+// SOCKET LOGGER
 
-template void logger::log<std::string>(std::string msg);
+socket_logger::socket_logger(const std::string& host, int port, level::logLevel ll)
+    : defaultLogLevel(ll) {
+    socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (socket_fd < 0) {
+        std::cerr << "Error opening socket.";
+        return;
+    }
+    
+    sockaddr_in server_addr;
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(port);
+    
+    if (inet_pton(AF_INET, host.c_str(), &server_addr.sin_addr) <= 0) {
+        close(socket_fd);
+        socket_fd = -1;
+        return;
+    }
+    
+    if (connect(socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+        close(socket_fd);
+        socket_fd = -1;
+    }
 
-template void logger::log<std::string&>(std::string& msg);
+    std::cout << "Connected to " << host << ":" << port << std::endl;
+}
 
-template void logger::log<const std::string&>(const std::string& msg);
+void socket_logger::log(const std::string& msg, level::logLevel lvl) {
+    auto time = details::get_time();
+    std::string entry = "[" + loglevel_to_str(lvl) + "][" + time + "] " + msg + "\n";
+    if (lvl < defaultLogLevel) return;
+    {
+        if (socket_fd < 0) {
+            std::cerr << "Socket disconnected.";
+            return;
+        }
+        std::unique_lock<std::mutex> lock(m_);
+        if (send(socket_fd, entry.c_str(), entry.size(), 0) < 0) {
+            std::cerr << "Issues while sending data. Closing the socket...";
+            close(socket_fd);
+            socket_fd = -1;
+            return;
+        }
+        fsync(socket_fd);
+    }
+}
 
-template void logger::log<char const*>(char const* msg, level::logLevel lvl);
+void socket_logger::log(const std::string& msg) {
+    log(msg, defaultLogLevel);
+}
 
-template void logger::log<std::string>(std::string msg, level::logLevel lvl);
+void socket_logger::setDefaultLogLevel(level::logLevel lvl) { defaultLogLevel.store(lvl); }
 
-template void logger::log<std::string&>(std::string& msg, level::logLevel lvl);
+level::logLevel socket_logger::getDefaultLogLevel() const { return defaultLogLevel; }
 
-template void logger::log<const std::string&>(const std::string& msg,
-                                              level::logLevel lvl);
+socket_logger::~socket_logger() { 
+    finish();
+}
+
+void socket_logger::finish() { 
+    if(socket_fd > 0) {
+        std::string entry = "Closing connection...";
+        {
+            std::unique_lock<std::mutex> lock(m_);
+            if (send(socket_fd, entry.c_str(), entry.size(), MSG_NOSIGNAL) < 0) {
+                std::cerr << "Failed to send shutdown message\n";
+                return;
+            }
+            shutdown(socket_fd, SHUT_WR);
+        }
+        close(socket_fd);
+        socket_fd = -1;
+    }
+}
 
 }  // namespace logWriter

@@ -124,7 +124,7 @@ int main() {
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
             runner.assertTrue(comparefiles(expected, "TEMPlogWorkerTest-2"));
-            //std::remove("TEMPlogWorkerTest-2");
+            std::remove("TEMPlogWorkerTest-2");
         }
     );
     // TEST 3
@@ -150,6 +150,36 @@ int main() {
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
             runner.assertTrue(comparefiles(expected, "TEMPlogWorkerTest-3"));
             std::remove("TEMPlogWorkerTest-3");
+        }
+    );
+    // TEST 4
+        expected = {
+        "[DEBUG][...] LOGGER MESSAGE 1",
+        "[INFO][...] LOGGER MESSAGE 2",
+        "[CRITICAL][...] LOGGER MESSAGE 3",
+        "[DEBUG][...] LOGGER MESSAGE 4",
+        "[INFO][...] LOGGER MESSAGE 5",
+        "[CRITICAL][...] LOGGER MESSAGE 6",
+    };
+    runner.runTest("Ending logging should be thread-safe",
+        [&runner, &expected](){
+            if(std::filesystem::exists("TEMPlogWorkerTest-4")) {
+                std::remove("TEMPlogWorkerTest-4");
+            }
+            app::logWorker::worker worker("TEMPlogWorkerTest-4", "DEBUG", 2);
+            std::array<longStream, 6> streams = {
+                longStream(1), longStream(2), longStream(3), 
+                longStream(4), longStream(5), longStream(6)
+            };
+            std::string data[] = {"DEBUG", "INFO", "CRITICAL"};
+            for (int i = 0 ; i < 6; i++) {
+                worker.log(streams[i], data[i % 3]);
+            }
+            // should be ending everything only after logging everything before
+            worker.stop();
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            runner.assertTrue(comparefiles(expected, "TEMPlogWorkerTest-4"));
+            std::remove("TEMPlogWorkerTest-4");
         }
     );
 

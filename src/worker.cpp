@@ -18,6 +18,7 @@ worker::~worker() {
     for(auto& th_ : threads_) {
         th_.join();
     }
+    logger->finish();
 }
 
 void worker::stop() {
@@ -29,14 +30,14 @@ void worker::stop() {
 void worker::worker_loop() {
     std::string msg;
     std::string loglevel;
-    while(running_) {
+    while(running_ || !q.empty()) {
         std::unique_ptr<virtual_task> t;
         {
             std::unique_lock<std::mutex> lock(m_);
             cv_.wait(lock, [this](){
                 return !running_ || !q.empty();
             });
-            if(!running_) {
+            if(!running_ && q.empty()) {
                 return;
             }
             if (q.empty()) continue;
@@ -69,14 +70,13 @@ std::string get_loglevel(){
 
 int run_app(int argc, char *argv[]){
     if(argc < 2) {
-        std::cerr << "Usage: .\\logger <filename> <LOGLEVEL: DEBUG/INFO/CRITICAL>?";
+        std::cerr << "Usage: .\\logger <filename> <LOGLEVEL: DEBUG/INFO/CRITICAL>?\n";
         return 1;
     }
 
     std::string ll_str;
     ll_str = (argc == 2) ? "INFO" : argv[2];
     logWorker::worker worker(argv[1], ll_str);
-
     while(true) {
         std::string msg = get_message();
         if(msg == "exit") {
@@ -84,7 +84,7 @@ int run_app(int argc, char *argv[]){
             break;
         }
         std::string ll = get_loglevel();
-        worker.log(msg, ll);
+        worker.log(std::move(msg), ll);
     }
 
     return 0;

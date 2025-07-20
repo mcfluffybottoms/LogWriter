@@ -17,6 +17,10 @@ namespace logWorker {
 
         template <typename T>
         void log(T&& msg, const std::string& ll) {
+            if(!running_) {
+                std::cerr << "Cannot log. Worker has finished working.\n";
+                return;
+            }
             {
                 std::unique_lock<std::mutex> lock(m_);
                 q.push(std::make_unique<task<T>>(std::forward<T>(msg), level::str_to_loglevel(ll)));
@@ -26,6 +30,10 @@ namespace logWorker {
 
         template <typename T>
         void log(T&& msg) {
+            if(!running_) {
+                std::cerr << "Cannot log. Worker has finished working.\n";
+                return;
+            }
             {
                 std::unique_lock<std::mutex> lock(m_);
                 q.push(std::make_unique<task<T>>(std::forward<T>(msg), logger->getDefaultLogLevel()));
@@ -46,7 +54,7 @@ namespace logWorker {
         template <typename T>
         struct task : virtual_task {
             task() {}
-            task(T&& m, level::logLevel l) : msg(m), ll(l) {}
+            task(T&& m, level::logLevel l) : msg(std::forward<T>(m)), ll(l) {}
             std::string get_msg() override {
                 std::ostringstream os;
                 os << msg;
