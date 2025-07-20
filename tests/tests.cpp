@@ -5,9 +5,13 @@
 #include <chrono>
 #include <thread>
 #include <array>
+#include <vector>
 
 namespace testSpace {
 
+/*
+    Helps to ignore times used.
+*/
 bool linesEqual(std::string& l1, std::string& l2) {
     auto l1_start = l1.find("]");
     auto l2_start = l2.find("]");
@@ -22,34 +26,41 @@ bool linesEqual(std::string& l1, std::string& l2) {
     return l1 == l2;
 }
 
-bool comparefiles(const std::string& p1, const std::string& p2) {
-    std::ifstream f1(p1, std::ifstream::binary);
+/*
+    Function to compare actual data with expected data.
+*/
+bool comparefiles(std::vector<std::string>& f1, const std::string& p2) {
     std::ifstream f2(p2, std::ifstream::binary);
 
-    if (f1.fail() || f2.fail()) {
+    if (f1.empty() || f2.fail()) {
         std::cout << "f1.fail() || f2.fail()\n";
         return false;
     }
 
-    std::string f1_line;
     std::string f2_line;
     size_t line_number = 0;
-    while (std::getline(f1, f1_line)) {
+    while (std::getline(f2, f2_line)) {
         ++line_number;
-        if (!std::getline(f2, f2_line) || !linesEqual(f1_line, f2_line)) {
+        if (f1.size() < line_number || !linesEqual(f2_line, f1[line_number - 1])) {
             std::cerr << "      Wrong line " << line_number << "\n";
-            std::cerr << "      1st file: " << f1_line << "\n";
+            std::cerr << "      1st file: " << f1[line_number - 1] << "\n";
             std::cerr << "      2st file: " << f2_line << "\n";
             return false;
         }
     }
-    if(std::getline(f2, f2_line)) {
-        std::cout << f2_line << "\n";
+    ++line_number;
+    if(f1.size() > line_number) {
+        std::cerr << "      Wrong line " << line_number << "\n";
+        std::cerr << "      1st file: " << f1[line_number - 1] << "\n";
+        std::cerr << "      2st file: " << "" << "\n";
         return false;
     }
     return true;
 }
 
+/*
+    Class with very long stream operator loading.
+*/
 struct longStream {
     longStream(int v) : value(v) {}
     friend std::ostream& operator<<(std::ostream& os, const longStream& obj);
@@ -63,33 +74,43 @@ std::ostream& operator<<(std::ostream& os, const longStream& obj)
     return os;
 }
 
-std::string slow_function(int i) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    return "LOGGER MESSAGE " + i;
-}
-
 }
 
 using namespace testSpace;
 
 int main() {
     auto& runner = TestRunner::getInstance();
+    std::vector<std::string> expected;
     
-    // TESTING LOGWORKER
+    //-----------TESTING LOGWORKER-----------//
+    // TEST 1
+    expected = {
+        "[DEBUG][...] LOGGER MESSAGE 1",
+        "",
+    };
     runner.runTest("Simple log message",
-        [&runner](){
+        [&runner, &expected](){
             if(std::filesystem::exists("TEMPlogWorkerTest-1")) {
                 std::remove("TEMPlogWorkerTest-1");
             }
             app::logWorker::worker worker("TEMPlogWorkerTest-1", "DEBUG");
             worker.log("LOGGER MESSAGE 1");
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            runner.assertTrue(comparefiles(RESOURCES_DIR "\\appExpectedLogs\\1", "TEMPlogWorkerTest-1"));
+            runner.assertTrue(comparefiles(expected, "TEMPlogWorkerTest-1"));
             std::remove("TEMPlogWorkerTest-1");
         }
     );
+    // TEST 2
+    expected = {
+        "[DEBUG][...] LOGGER MESSAGE 1",
+        "[DEBUG][...] LOGGER MESSAGE 2",
+        "[DEBUG][...] LOGGER MESSAGE 3",
+        "[DEBUG][...] LOGGER MESSAGE 4",
+        "[DEBUG][...] LOGGER MESSAGE 5",
+        ""
+    };
     runner.runTest("Simple log message with multiple threads",
-        [&runner](){
+        [&runner, &expected](){
             if(std::filesystem::exists("TEMPlogWorkerTest-2")) {
                 std::remove("TEMPlogWorkerTest-2");
             }
@@ -102,12 +123,18 @@ int main() {
                 worker.log(stream);
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            runner.assertTrue(comparefiles(RESOURCES_DIR "\\appExpectedLogs\\2", "TEMPlogWorkerTest-2"));
-            std::remove("TEMPlogWorkerTest-2");
+            runner.assertTrue(comparefiles(expected, "TEMPlogWorkerTest-2"));
+            //std::remove("TEMPlogWorkerTest-2");
         }
     );
+    // TEST 3
+    expected = {
+        "[CRITICAL][...] LOGGER MESSAGE 3",
+        "[CRITICAL][...] LOGGER MESSAGE 6",
+        ""
+    };
     runner.runTest("Simple log message with multiple threads and different log levels",
-        [&runner](){
+        [&runner, &expected](){
             if(std::filesystem::exists("TEMPlogWorkerTest-3")) {
                 std::remove("TEMPlogWorkerTest-3");
             }
@@ -121,7 +148,7 @@ int main() {
                 worker.log(streams[i], data[i % 3]);
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            runner.assertTrue(comparefiles(RESOURCES_DIR "\\appExpectedLogs\\3", "TEMPlogWorkerTest-3"));
+            runner.assertTrue(comparefiles(expected, "TEMPlogWorkerTest-3"));
             std::remove("TEMPlogWorkerTest-3");
         }
     );
