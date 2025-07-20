@@ -4,8 +4,12 @@ project(logger LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# STATIC LINKING - not able to override with cmake .. -DBUILD_SHARED_LIBS=ON
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libs" FORCE)
+option(BUILD_SHARED_LIBS ON)
+if(BUILD_SHARED_LIBS)
+    set(LIB_TYPE SHARED)
+else()
+    set(LIB_TYPE STATIC)
+endif()
 
 add_subdirectory(lib/logWriter)
 
