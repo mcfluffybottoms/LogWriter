@@ -21,8 +21,8 @@ add_executable(logger
 
 add_executable(data_analyzer 
     app/socket_listener/src/main.cpp
-    app/socket_reader/src/data_analyzer.cpp
-    app/socket_reader/include/data_analyzer.hpp
+    app/socket_listener/src/data_analyzer.cpp
+    app/socket_listener/include/data_analyzer.hpp
 )
 
 

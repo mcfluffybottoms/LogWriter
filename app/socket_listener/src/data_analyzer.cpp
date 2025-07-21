@@ -110,6 +110,7 @@ void receiver::start() {
         close(client_fd);
 
         if (collector.num_of_msg % interval_messages == 0 && running_) {
+            std::unique_lock<std::mutex> lock(m_);
             std::cout << "-------- REPORT AFTER " << interval_messages << " MESSAGES --------\n";
             char report_buf[256] = {0};
             collector.cleanup(std::chrono::system_clock::now());
@@ -130,6 +131,7 @@ void receiver::stats() {
         std::this_thread::sleep_for(std::chrono::duration<double, std::milli>(interval));
         char buffer[256] = {0};
         if(running_) {
+            std::unique_lock<std::mutex> lock(m_);
             collector.cleanup(std::chrono::system_clock::now());
             std::cout << "-------- REPORT AFTER " << interval << " MS --------\n";
             collector.get_data(buffer);
@@ -139,7 +141,7 @@ void receiver::stats() {
 }
 
 void receiver::handle_request(char* data) {
-    std::lock_guard<std::mutex> lock(m_);
+    std::unique_lock<std::mutex> lock(m_);
     while(data && *data) {
         // time
         char* level_start = strchr(data, '[');
