@@ -65,7 +65,7 @@ LOGWRITER_API std::string get_time_for_file() {
 
 namespace logWriter {
 
-// FILE LOGGER
+// ----------- FILE LOGGER ----------- //
 
 logger::logger(const std::string &jn, level::logLevel ll)
     : defaultLogLevel(ll) {
@@ -78,10 +78,17 @@ logger::logger(const std::string &jn, level::logLevel ll)
 void logger::log(const std::string &msg, level::logLevel lvl) {
   auto time = details::get_time();
   std::string entry = "[" + loglevel_to_str(lvl) + "][" + time + "] " + msg;
-  if (lvl < defaultLogLevel)
+  if (lvl < defaultLogLevel) {
     return;
+  }
+  if (!journal.is_open()) {
+    std::cerr << "File is closed." << "\n";
+  }
   {
     std::unique_lock<std::mutex> lock(m_);
+    if (!journal.is_open()) {
+      std::cerr << "File is closed." << "\n";
+    }
     journal << entry << std::endl;
   }
 }
@@ -92,7 +99,9 @@ logger::~logger() {
   std::string entry = "Finishing logging...";
   {
     std::unique_lock<std::mutex> lock(m_);
-    journal << entry << std::flush;
+    if (journal.is_open()) {
+      journal << entry << std::flush; // will be closed automatically
+    }
   }
 }
 
@@ -104,6 +113,9 @@ level::logLevel logger::get_default_loglevel() const { return defaultLogLevel; }
 
 void logger::finish() {
   std::string entry = "Finishing logging...";
+  if (!journal.is_open()) {
+    return;
+  }
   {
     std::unique_lock<std::mutex> lock(m_);
     journal << entry << std::endl;
@@ -111,7 +123,7 @@ void logger::finish() {
   }
 }
 
-// SOCKET LOGGER
+// ----------- SOCKET LOGGER ----------- //
 
 socket_logger::socket_logger(const std::string &host, int port,
                              level::logLevel ll)

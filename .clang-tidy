@@ -1,0 +1,4 @@
+# .clang-tidy
+Checks: >
+  -*,clang-analyzer-*,modernize-*
+WarningsAsErrors: false
