@@ -34,11 +34,8 @@ target_link_libraries(logger logWriter)
 
 option(INCLUDE_TESTS ON)
 if(INCLUDE_TESTS)
-    add_executable(runAppTests app/worker/tests/tests.cpp app/worker/include/worker.hpp app/worker/src/worker.cpp)
-    target_compile_definitions(runAppTests PUBLIC
-        RESOURCES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/resources"
-    )
-    target_link_libraries(runAppTests PRIVATE logWriter testFramework)
+    add_executable(runWorkerAppTests app/worker/tests/tests.cpp app/worker/include/worker.hpp app/worker/src/worker.cpp)
+    add_executable(runSocketAppTests app/socket_listener/tests/tests.cpp app/socket_listener/src/data_analyzer.cpp app/socket_listener/include/data_analyzer.hpp)
+    target_link_libraries(runWorkerAppTests PRIVATE logWriter testFramework)
+    target_link_libraries(runSocketAppTests PRIVATE logWriter testFramework)
 endif()
-
-message(STATUS "C++ compiler: ${CMAKE_CXX_COMPILER}")
