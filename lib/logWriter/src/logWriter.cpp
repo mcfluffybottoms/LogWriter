@@ -105,7 +105,7 @@ socket_logger::socket_logger(const std::string& host, int port, level::logLevel 
     : defaultLogLevel(ll) {
     socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_fd < 0) {
-        std::cerr << "Error opening socket.";
+        std::cerr << "Error opening socket.\n";
         return;
     }
     
@@ -128,17 +128,17 @@ socket_logger::socket_logger(const std::string& host, int port, level::logLevel 
 }
 
 void socket_logger::log(const std::string& msg, level::logLevel lvl) {
+    if (socket_fd < 0) {
+        std::cerr << "Socket disconnected.\n";
+        return;
+    }
     auto time = details::get_time();
     std::string entry = "[" + loglevel_to_str(lvl) + "][" + time + "] " + msg + "\n";
     if (lvl < defaultLogLevel) return;
     {
-        if (socket_fd < 0) {
-            std::cerr << "Socket disconnected.";
-            return;
-        }
         std::unique_lock<std::mutex> lock(m_);
-        if (send(socket_fd, entry.c_str(), entry.size(), 0) < 0) {
-            std::cerr << "Issues while sending data. Closing the socket...";
+        if (send(socket_fd, entry.c_str(), entry.size(), MSG_NOSIGNAL) < 0) {
+            std::cerr << "Issues while sending data. Closing the socket...\n";
             close(socket_fd);
             socket_fd = -1;
             return;
@@ -164,10 +164,10 @@ void socket_logger::finish() {
         std::string entry = "Closing connection...";
         {
             std::unique_lock<std::mutex> lock(m_);
-            if (send(socket_fd, entry.c_str(), entry.size(), MSG_NOSIGNAL) < 0) {
-                std::cerr << "Failed to send shutdown message\n";
-                return;
-            }
+            // if (send(socket_fd, entry.c_str(), entry.size(), MSG_NOSIGNAL) < 0) {
+            //     std::cerr << "Failed to send shutdown message\n";
+            //     return;
+            // }
             shutdown(socket_fd, SHUT_WR);
         }
         close(socket_fd);
