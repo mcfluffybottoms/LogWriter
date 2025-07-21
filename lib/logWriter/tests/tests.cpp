@@ -66,7 +66,7 @@ void test_log() {
 
     expected = {
         "[DEBUG][...] LOGGER MESSAGE 1",
-        "",
+        "Finishing logging...",
     };
     runner.runTest("Simple log message",
         [&runner, &expected](){
@@ -75,8 +75,8 @@ void test_log() {
             }
             logWriter::logger logger("TEMPlogWriterTest-1", level::logLevel::DEBUG);
             logger.log("LOGGER MESSAGE 1");
-            runner.assertTrue(comparefiles(expected, "TEMPlogWriterTest-1"));
             logger.finish();
+            runner.assertTrue(comparefiles(expected, "TEMPlogWriterTest-1"));
             std::remove("TEMPlogWriterTest-1");
         }
     );
@@ -84,7 +84,7 @@ void test_log() {
         "[DEBUG][...] LOGGER MESSAGE 1",
         "[INFO][...] LOGGER MESSAGE 2",
         "[CRITICAL][...] LOGGER MESSAGE 3",
-        "",
+        "Finishing logging...",
     };
     runner.runTest("Several Inputs",
         [&runner, &expected](){
@@ -95,15 +95,15 @@ void test_log() {
             logger.log("LOGGER MESSAGE 1");
             logger.log("LOGGER MESSAGE 2", level::logLevel::INFO);
             logger.log("LOGGER MESSAGE 3", level::logLevel::CRITICAL);
-            runner.assertTrue(comparefiles(expected, "TEMPlogWriterTest-2"));
             logger.finish();
+            runner.assertTrue(comparefiles(expected, "TEMPlogWriterTest-2"));
             std::remove("TEMPlogWriterTest-2");
         }
     );
     expected = {
         "[CRITICAL][...] LOGGER MESSAGE 3",
         "[CRITICAL][...] LOGGER MESSAGE 4",
-        "",
+        "Finishing logging...",
     };
     runner.runTest("Filters Out Logging Levels",
         [&runner, &expected](){
@@ -115,19 +115,19 @@ void test_log() {
             logger.log("LOGGER MESSAGE 2", level::logLevel::INFO);
             logger.log("LOGGER MESSAGE 3", level::logLevel::CRITICAL);
             logger.log("LOGGER MESSAGE 4");
-            runner.assertTrue(comparefiles(expected, "TEMPlogWriterTest-3"));
             logger.finish();
+            runner.assertTrue(comparefiles(expected, "TEMPlogWriterTest-3"));
             std::remove("TEMPlogWriterTest-3");
         }
     );
     expected = {
-        "[INFO][...] LOGGER MESSAGE 2",
-        "[CRITICAL][...] LOGGER MESSAGE 3",
+        "[INFO][...] LOGGER MESSAGE 1",
+        "[CRITICAL][...] LOGGER MESSAGE 2",
         "[CRITICAL][...] LOGGER MESSAGE 3",
         "[DEBUG][...] LOGGER MESSAGE 1",
         "[INFO][...] LOGGER MESSAGE 2",
         "[CRITICAL][...] LOGGER MESSAGE 3",
-        "",
+        "Finishing logging...",
     };
     runner.runTest("Simple Change Default Logging Levels",
         [&runner, &expected](){
@@ -152,8 +152,8 @@ void test_log() {
             logger.log("LOGGER MESSAGE 2", level::logLevel::INFO);
             logger.log("LOGGER MESSAGE 3", level::logLevel::CRITICAL);
             // CHECK RESULT
-            runner.assertTrue(comparefiles(expected, "TEMPlogWriterTest-4"));
             logger.finish();
+            runner.assertTrue(comparefiles(expected, "TEMPlogWriterTest-4"));
             std::remove("TEMPlogWriterTest-4");
         }
     );
