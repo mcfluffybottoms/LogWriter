@@ -12,6 +12,12 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <variant>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <arpa/inet.h>
 
 #ifdef LOGWRITER_STATIC
 #define LOGWRITER_API
@@ -28,6 +34,7 @@
 #endif
 
 namespace level {
+
 enum struct logLevel : int { DEBUG, INFO, CRITICAL };
 
 const std::vector<std::string> logLevelStrings = {"DEBUG", "INFO", "CRITICAL"};
@@ -48,58 +55,45 @@ LOGWRITER_API std::string get_time_for_file();
 
 namespace logWriter {
 
-class LOGWRITER_API logger {
+class LOGWRITER_API base_logger {
+   public:
+    virtual void log(const std::string& msg, level::logLevel lvl) = 0;
+    virtual void log(const std::string& msg) = 0;
+    virtual void setDefaultLogLevel(level::logLevel lvl) = 0;
+    virtual level::logLevel getDefaultLogLevel() const = 0;
+    virtual void finish() = 0;
+};
+
+class LOGWRITER_API logger : base_logger {
    public:
     logger(const std::string& jn, level::logLevel ll);
-
-    template <typename T>
-    void log(T msg, level::logLevel lvl) {
-        auto time = details::get_time();
-        if (lvl < defaultLogLevel) return;
-        {
-            std::unique_lock<std::mutex> lock(m_);
-            journal << "[" << loglevel_to_str(lvl) << "][" << time << "] " << msg
-                << std::endl;
-        }
-        
-    }
-
-    template <typename T>
-    void log(T msg) {
-        log(std::forward<T>(msg), defaultLogLevel);
-    }
-
-    void setDefaultLogLevel(level::logLevel lvl);
-
-    level::logLevel getDefaultLogLevel();
-
-    void finish();
+    void log(const std::string& msg, level::logLevel lvl) override;
+    void log(const std::string& msg) override;
+    ~logger();
+    void setDefaultLogLevel(level::logLevel lvl) override;
+    level::logLevel getDefaultLogLevel() const override;
+    void finish() override;
 
    private:
     std::ofstream journal;
     std::mutex m_;
-    std::atomic<level::logLevel> defaultLogLevel;  // make it atomic
+    std::atomic<level::logLevel> defaultLogLevel;
 };
 
-extern template LOGWRITER_API void logger::log<char const*>(char const* msg);
+class LOGWRITER_API socket_logger : base_logger {
+   public:
+    socket_logger(const std::string& host, int port, level::logLevel ll);
+    void log(const std::string& msg, level::logLevel lvl) override;
+    void log(const std::string& msg) override;
+    ~socket_logger();
+    void setDefaultLogLevel(level::logLevel lvl) override;
+    level::logLevel getDefaultLogLevel() const override;
+    void finish() override;
 
-extern template LOGWRITER_API void logger::log<std::string>(std::string msg);
-
-extern template LOGWRITER_API void logger::log<std::string&>(std::string& msg);
-
-extern template LOGWRITER_API void logger::log<const std::string&>(
-    const std::string& msg);
-
-extern template LOGWRITER_API void logger::log<char const*>(
-    char const* msg, level::logLevel lvl);
-
-extern template LOGWRITER_API void logger::log<std::string>(
-    std::string msg, level::logLevel lvl);
-
-extern template LOGWRITER_API void logger::log<std::string&>(
-    std::string& msg, level::logLevel lvl);
-
-extern template LOGWRITER_API void logger::log<const std::string&>(
-    const std::string& msg, level::logLevel lvl);
+   private:
+    int socket_fd = -1;
+    std::mutex m_;
+    std::atomic<level::logLevel> defaultLogLevel;
+};
 
 }  // namespace logWriter

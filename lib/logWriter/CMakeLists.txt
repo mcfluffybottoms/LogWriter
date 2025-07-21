@@ -33,6 +33,9 @@ option(INCLUDE_EXAMPLE ON)
 if(INCLUDE_EXAMPLE)
     add_executable(logStructExample example/logStruct.cpp)
     target_link_libraries(logStructExample PRIVATE logWriter)
+
+    add_executable(logSocketExample example/logSocket.cpp)
+    target_link_libraries(logSocketExample PRIVATE logWriter)
 endif()
 
 option(INCLUDE_TESTS ON)
