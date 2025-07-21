@@ -40,5 +40,3 @@ if(INCLUDE_TESTS)
     )
     target_link_libraries(runAppTests PRIVATE logWriter testFramework)
 endif()
-
-message(STATUS "C++ compiler: ${CMAKE_CXX_COMPILER}")
