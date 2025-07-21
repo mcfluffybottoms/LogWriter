@@ -42,6 +42,17 @@ LOGWRITER_API std::string get_time() {
   return std::string(buf) + "." + std::to_string(milliseconds.count());
 }
 
+LOGWRITER_API std::string get_time(std::chrono::system_clock::time_point now) {
+  std::time_t t = std::chrono::system_clock::to_time_t(now);
+  char buf[20];
+  strftime(buf, 20, "%Y-%m-%d %H:%M:%S", std::localtime(&t));
+  auto seconds = std::chrono::time_point_cast<std::chrono::seconds>(now);
+  auto fraction = now - seconds;
+  auto milliseconds =
+      std::chrono::duration_cast<std::chrono::milliseconds>(fraction);
+  return std::string(buf) + "." + std::to_string(milliseconds.count());
+}
+
 LOGWRITER_API std::string get_time_for_file() {
   std::time_t t =
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());

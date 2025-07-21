@@ -42,6 +42,10 @@ struct receiver {
 
   void handle_request(char *data);
 
+  void find_level(char *str);
+
+  std::chrono::system_clock::time_point find_time(char *t_str);
+
   private:
   size_t interval_messages;
   size_t interval;
@@ -53,10 +57,6 @@ struct receiver {
   static inline std::atomic<bool> running_{true};
   int socket_fd = -1;
   const int BUFFER_SIZE = 4096;
-
-  void find_level(char *str);
-
-  std::chrono::system_clock::time_point find_time(char *t_str);
 };
 
 } // namespace socket_listener

@@ -64,7 +64,9 @@ int main() {
 ```cmake
 cmake .. -DBUILD_SHARED_LIBS=ON/OFF -DINCLUDE_TESTS=ON/OFF
 ```
--DBUILD_SHARED_LIBS - динамическая/статическая сборка библиотеки
+-DBUILD_SHARED_LIBS - динамическая/статическая сборка библиотеки logWriter
+
+-DINCLUDE_TESTS - сборка тестов
 
 ## Запуск
 
@@ -114,13 +116,16 @@ int main() {
 ## Сборка
 
 ```cmake
-cmake .. -DBUILD_SHARED_LIBS=ON/OFF
+cmake .. -DBUILD_SHARED_LIBS=ON/OFF -DINCLUDE_TESTS=ON/OFF
+
 ```
--DBUILD_SHARED_LIBS - динамическая/статическая сборка библиотеки
+-DBUILD_SHARED_LIBS - динамическая/статическая сборка библиотеки logWriter
+
+-DINCLUDE_TESTS - сборка тестов
 
 ## Запуск
 
-.\data_analyzer <port> <messages> <time>
+./data_analyzer <port> <messages> <time>
 
 - отчет после messages сообщений
 

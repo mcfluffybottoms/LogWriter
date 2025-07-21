@@ -42,6 +42,8 @@ LOGWRITER_API std::string loglevel_to_str(logLevel ll);
 
 namespace details {
 
+LOGWRITER_API std::string get_time(std::chrono::system_clock::time_point now);
+
 LOGWRITER_API std::string get_time();
 
 LOGWRITER_API std::string get_time_for_file();

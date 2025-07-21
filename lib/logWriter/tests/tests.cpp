@@ -116,8 +116,8 @@ void test_log() {
     std::remove("TEMPlogWriterTest-3");
   });
   expected = {
-      "[INFO][...] LOGGER MESSAGE 1",
-      "[CRITICAL][...] LOGGER MESSAGE 2",
+      "[INFO][...] LOGGER MESSAGE 2",
+      "[CRITICAL][...] LOGGER MESSAGE 3",
       "[CRITICAL][...] LOGGER MESSAGE 3",
       "[DEBUG][...] LOGGER MESSAGE 1",
       "[INFO][...] LOGGER MESSAGE 2",

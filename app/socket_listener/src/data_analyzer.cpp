@@ -178,7 +178,7 @@ void receiver::handle_request(char *data) {
       collector.min_len = len;
     }
     collector.sum_len += len;
-    collector.avrg_len += collector.sum_len / collector.num_of_msg;
+    collector.avrg_len = collector.sum_len / collector.num_of_msg;
     // per hour
     char buf[20] = {0};
     strncpy(buf, time_start + 1, time_end - time_start);

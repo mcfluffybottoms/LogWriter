@@ -75,7 +75,7 @@ std::string get_loglevel() {
 int run_app(int argc, char *argv[]) {
   if (argc < 2) {
     std::cerr
-        << "Usage: .\\logger <filename> <LOGLEVEL: DEBUG/INFO/CRITICAL>?\n";
+        << "Usage: ./logger <filename> <LOGLEVEL: DEBUG/INFO/CRITICAL>?\n";
     return 1;
   }
 
