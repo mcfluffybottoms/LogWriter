@@ -3,176 +3,176 @@
 
 namespace level {
 
-LOGWRITER_API logLevel str_to_loglevel(const std::string& ll) {
-    if (ll == "DEBUG") {
-        return logLevel::DEBUG;
-    } else if (ll == "INFO") {
-        return logLevel::INFO;
-    } else if (ll == "CRITICAL") {
-        return logLevel::CRITICAL;
-    }
+LOGWRITER_API logLevel str_to_loglevel(const std::string &ll) {
+  if (ll == "DEBUG") {
+    return logLevel::DEBUG;
+  } else if (ll == "INFO") {
     return logLevel::INFO;
+  } else if (ll == "CRITICAL") {
+    return logLevel::CRITICAL;
+  }
+  return logLevel::INFO;
 }
 
 LOGWRITER_API std::string loglevel_to_str(logLevel ll) {
-    switch (ll) {
-        case logLevel::DEBUG:
-            return "DEBUG";
-        case logLevel::INFO:
-            return "INFO";
-        case logLevel::CRITICAL:
-            return "CRITICAL";
-    }
+  switch (ll) {
+  case logLevel::DEBUG:
+    return "DEBUG";
+  case logLevel::INFO:
     return "INFO";
+  case logLevel::CRITICAL:
+    return "CRITICAL";
+  }
+  return "INFO";
 }
 
-}  // namespace level
+} // namespace level
 
 namespace details {
 
 LOGWRITER_API std::string get_time() {
-    auto now = std::chrono::system_clock::now();
-    std::time_t t = std::chrono::system_clock::to_time_t(now);
-    char buf[20];
-    strftime(buf, 20, "%Y-%m-%d %H:%M:%S", std::localtime(&t));
-    auto seconds = std::chrono::time_point_cast<std::chrono::seconds>(now);
-    auto fraction = now - seconds;
-    auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(fraction);
-    return std::string(buf) + "." + std::to_string(milliseconds.count());
+  auto now = std::chrono::system_clock::now();
+  std::time_t t = std::chrono::system_clock::to_time_t(now);
+  char buf[20];
+  strftime(buf, 20, "%Y-%m-%d %H:%M:%S", std::localtime(&t));
+  auto seconds = std::chrono::time_point_cast<std::chrono::seconds>(now);
+  auto fraction = now - seconds;
+  auto milliseconds =
+      std::chrono::duration_cast<std::chrono::milliseconds>(fraction);
+  return std::string(buf) + "." + std::to_string(milliseconds.count());
 }
 
 LOGWRITER_API std::string get_time_for_file() {
-    std::time_t t =
-        std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    char buf[20];
-    strftime(buf, 20, "%Y-%m-%d-%H-%M-%S", std::localtime(&t));
-    return std::string(buf);
+  std::time_t t =
+      std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+  char buf[20];
+  strftime(buf, 20, "%Y-%m-%d-%H-%M-%S", std::localtime(&t));
+  return std::string(buf);
 }
 
-}  // namespace details
+} // namespace details
 
 namespace logWriter {
 
-
 // FILE LOGGER
 
-logger::logger(const std::string& jn, level::logLevel ll)
+logger::logger(const std::string &jn, level::logLevel ll)
     : defaultLogLevel(ll) {
-    journal.open(jn, std::ios_base::app);
-    if (!journal.is_open()) {
-        std::cerr << "Error opening file: " << jn << "\n";
-    }
+  journal.open(jn, std::ios_base::app);
+  if (!journal.is_open()) {
+    std::cerr << "Error opening file: " << jn << "\n";
+  }
 }
 
-void logger::log(const std::string& msg, level::logLevel lvl) {
-    auto time = details::get_time();
-    std::string entry = "[" + loglevel_to_str(lvl) + "][" + time + "] " + msg;
-    if (lvl < defaultLogLevel) return;
-    {
-        std::unique_lock<std::mutex> lock(m_);
-        journal << entry << std::endl;
-    }
+void logger::log(const std::string &msg, level::logLevel lvl) {
+  auto time = details::get_time();
+  std::string entry = "[" + loglevel_to_str(lvl) + "][" + time + "] " + msg;
+  if (lvl < defaultLogLevel)
+    return;
+  {
+    std::unique_lock<std::mutex> lock(m_);
+    journal << entry << std::endl;
+  }
 }
 
-void logger::log(const std::string& msg) {
-    log(msg, defaultLogLevel);
+void logger::log(const std::string &msg) { log(msg, defaultLogLevel); }
+
+logger::~logger() {
+  std::string entry = "Finishing logging...";
+  {
+    std::unique_lock<std::mutex> lock(m_);
+    journal << entry << std::flush;
+  }
 }
 
-logger::~logger() { 
-    std::string entry = "Finishing logging...";
-    {
-        std::unique_lock<std::mutex> lock(m_);
-        journal << entry << std::flush;
-    }
+void logger::set_default_loglevel(level::logLevel lvl) {
+  defaultLogLevel.store(lvl);
 }
 
-void logger::setDefaultLogLevel(level::logLevel lvl) { defaultLogLevel.store(lvl); }
-
-level::logLevel logger::getDefaultLogLevel() const { return defaultLogLevel; }
+level::logLevel logger::get_default_loglevel() const { return defaultLogLevel; }
 
 void logger::finish() {
-    std::string entry = "Finishing logging...";
-    {
-        std::unique_lock<std::mutex> lock(m_);
-        journal << entry << std::endl;
-        journal.close();
-    }
+  std::string entry = "Finishing logging...";
+  {
+    std::unique_lock<std::mutex> lock(m_);
+    journal << entry << std::endl;
+    journal.close();
+  }
 }
 
 // SOCKET LOGGER
 
-socket_logger::socket_logger(const std::string& host, int port, level::logLevel ll)
+socket_logger::socket_logger(const std::string &host, int port,
+                             level::logLevel ll)
     : defaultLogLevel(ll) {
-    socket_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (socket_fd < 0) {
-        std::cerr << "Error opening socket.\n";
-        return;
-    }
-    
-    sockaddr_in server_addr;
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(port);
-    
-    if (inet_pton(AF_INET, host.c_str(), &server_addr.sin_addr) <= 0) {
-        close(socket_fd);
-        socket_fd = -1;
-        return;
-    }
-    
-    if (connect(socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-        close(socket_fd);
-        socket_fd = -1;
-    }
+  socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+  if (socket_fd < 0) {
+    std::cerr << "Error opening socket.\n";
+    return;
+  }
 
-    std::cout << "Connected to " << host << ":" << port << std::endl;
+  sockaddr_in server_addr;
+  server_addr.sin_family = AF_INET;
+  server_addr.sin_port = htons(port);
+
+  if (inet_pton(AF_INET, host.c_str(), &server_addr.sin_addr) <= 0) {
+    close(socket_fd);
+    socket_fd = -1;
+    return;
+  }
+
+  if (connect(socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) <
+      0) {
+    close(socket_fd);
+    socket_fd = -1;
+  }
+
+  std::cout << "Connected to " << host << ":" << port << std::endl;
 }
 
-void socket_logger::log(const std::string& msg, level::logLevel lvl) {
-    if (socket_fd < 0) {
-        std::cerr << "Socket disconnected.\n";
-        return;
+void socket_logger::log(const std::string &msg, level::logLevel lvl) {
+  if (socket_fd < 0) {
+    std::cerr << "Socket disconnected.\n";
+    return;
+  }
+  auto time = details::get_time();
+  std::string entry =
+      "[" + loglevel_to_str(lvl) + "][" + time + "] " + msg + "\n";
+  if (lvl < defaultLogLevel)
+    return;
+  {
+    std::unique_lock<std::mutex> lock(m_);
+    if (send(socket_fd, entry.c_str(), entry.size(), MSG_NOSIGNAL) < 0) {
+      std::cerr << "Issues while sending data. Closing the socket...\n";
+      close(socket_fd);
+      socket_fd = -1;
+      return;
     }
-    auto time = details::get_time();
-    std::string entry = "[" + loglevel_to_str(lvl) + "][" + time + "] " + msg + "\n";
-    if (lvl < defaultLogLevel) return;
+    fsync(socket_fd);
+  }
+}
+
+void socket_logger::log(const std::string &msg) { log(msg, defaultLogLevel); }
+
+void socket_logger::set_default_loglevel(level::logLevel lvl) {
+  defaultLogLevel.store(lvl);
+}
+
+level::logLevel socket_logger::get_default_loglevel() const {
+  return defaultLogLevel;
+}
+
+socket_logger::~socket_logger() { finish(); }
+
+void socket_logger::finish() {
+  if (socket_fd > 0) {
     {
-        std::unique_lock<std::mutex> lock(m_);
-        if (send(socket_fd, entry.c_str(), entry.size(), MSG_NOSIGNAL) < 0) {
-            std::cerr << "Issues while sending data. Closing the socket...\n";
-            close(socket_fd);
-            socket_fd = -1;
-            return;
-        }
-        fsync(socket_fd);
+      std::unique_lock<std::mutex> lock(m_);
+      shutdown(socket_fd, SHUT_WR);
     }
+    close(socket_fd);
+    socket_fd = -1;
+  }
 }
 
-void socket_logger::log(const std::string& msg) {
-    log(msg, defaultLogLevel);
-}
-
-void socket_logger::setDefaultLogLevel(level::logLevel lvl) { defaultLogLevel.store(lvl); }
-
-level::logLevel socket_logger::getDefaultLogLevel() const { return defaultLogLevel; }
-
-socket_logger::~socket_logger() { 
-    finish();
-}
-
-void socket_logger::finish() { 
-    if(socket_fd > 0) {
-        std::string entry = "Closing connection...";
-        {
-            std::unique_lock<std::mutex> lock(m_);
-            // if (send(socket_fd, entry.c_str(), entry.size(), MSG_NOSIGNAL) < 0) {
-            //     std::cerr << "Failed to send shutdown message\n";
-            //     return;
-            // }
-            shutdown(socket_fd, SHUT_WR);
-        }
-        close(socket_fd);
-        socket_fd = -1;
-    }
-}
-
-}  // namespace logWriter
+} // namespace logWriter
